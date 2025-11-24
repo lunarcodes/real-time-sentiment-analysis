@@ -1,5 +1,10 @@
 com/enbd/sentiment/flink/AggregationJob.class
 com/enbd/sentiment/flink/SentimentJob.class
+com/enbd/sentiment/flink/SentimentJob$MLSentimentAnalyzer.class
 com/enbd/sentiment/flink/EnrichmentJob.class
 com/enbd/sentiment/flink/AggregationJob$SentimentAggregator.class
+com/enbd/sentiment/flink/SentimentJob$NaiveBayesClassifier.class
 com/enbd/sentiment/flink/AggregationJob$MetricsAccumulator.class
+com/enbd/sentiment/flink/SentimentJob$TFIDFCalculator.class
+com/enbd/sentiment/flink/AggregationJob$CityExtractorMapFunction.class
+com/enbd/sentiment/flink/SentimentJob$SentimentResult.class

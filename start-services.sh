@@ -193,7 +193,7 @@ build_and_deploy() {
         # Sentiment Analysis Job
         if [ -f "$PROJECT_DIR/flink-jobs/target/flink-sentiment-job.jar" ]; then
             $FLINK_HOME/bin/flink run -d \
-                $PROJECT_DIR/flink-jobs/target/flink-sentiment-job.jar 2>/dev/null
+                $PROJECT_DIR/flink-jobs/target/flink-sentiment-job.jar 2>$PROJECT_DIR/flink-jobs/sentiment.log
             echo -e "  ${GREEN}✓${NC} Submitted Sentiment Analysis Job"
         else
             echo -e "  ${YELLOW}⚠${NC} flink-sentiment-job.jar not found, skipping..."
@@ -202,7 +202,7 @@ build_and_deploy() {
         # Aggregation Job
         if [ -f "$PROJECT_DIR/flink-jobs/target/flink-aggregation-job.jar" ]; then
             $FLINK_HOME/bin/flink run -d \
-                $PROJECT_DIR/flink-jobs/target/flink-aggregation-job.jar 2>/dev/null
+                $PROJECT_DIR/flink-jobs/target/flink-aggregation-job.jar 2>$PROJECT_DIR/flink-jobs/agg.log
             echo -e "  ${GREEN}✓${NC} Submitted Aggregation Job"
         else
             echo -e "  ${YELLOW}⚠${NC} flink-aggregation-job.jar not found, skipping..."

@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.AggregateFunction;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
@@ -51,16 +53,10 @@ public class AggregationJob {
         );
         
         // Parse and key by city (or use "Global" if no city)
+        // FIX: Added .returns() to specify the type information explicitly
         DataStream<Tuple2<String, String>> keyedMessages = analyzedMessages
-            .map(message -> {
-                JsonNode json = MAPPER.readTree(message);
-                String city = "Global"; // Default
-                
-                // Try to extract city from the message structure
-                // This is a simplified version - adjust based on your actual data structure
-                
-                return new Tuple2<>(city, message);
-            });
+            .map(new CityExtractorMapFunction())
+            .returns(Types.TUPLE(Types.STRING, Types.STRING));
         
         // Aggregate by 60-second windows
         DataStream<String> aggregatedMetrics = keyedMessages
@@ -81,6 +77,39 @@ public class AggregationJob {
         aggregatedMetrics.sinkTo(sink);
         
         env.execute("Aggregation Job");
+    }
+    
+    /**
+     * MapFunction to extract city from message - using a class instead of lambda
+     * to avoid type erasure issues
+     */
+    public static class CityExtractorMapFunction implements MapFunction<String, Tuple2<String, String>> {
+        
+        private static final ObjectMapper MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
+        
+        @Override
+        public Tuple2<String, String> map(String message) throws Exception {
+            try {
+                JsonNode json = MAPPER.readTree(message);
+                String city = "Global"; // Default
+                
+                // Try to extract city from the message structure
+                // Check content_analysis -> location or other fields
+                if (json.has("content_analysis")) {
+                    JsonNode contentAnalysis = json.get("content_analysis");
+                    if (contentAnalysis.has("location")) {
+                        JsonNode location = contentAnalysis.get("location");
+                        if (location.has("city")) {
+                            city = location.get("city").asText("Global");
+                        }
+                    }
+                }
+                
+                return new Tuple2<>(city, message);
+            } catch (Exception e) {
+                return new Tuple2<>("Global", message);
+            }
+        }
     }
     
     /**

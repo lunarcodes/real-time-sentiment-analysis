@@ -1,0 +1,28 @@
+
+------------------------------------------------------------
+ The program finished with the following exception:
+
+org.apache.flink.client.program.ProgramInvocationException: The main method caused an error: duplicate element: is
+	at org.apache.flink.client.program.PackagedProgram.callMainMethod(PackagedProgram.java:372)
+	at org.apache.flink.client.program.PackagedProgram.invokeInteractiveModeForExecution(PackagedProgram.java:222)
+	at org.apache.flink.client.ClientUtils.executeProgram(ClientUtils.java:105)
+	at org.apache.flink.client.cli.CliFrontend.executeProgram(CliFrontend.java:851)
+	at org.apache.flink.client.cli.CliFrontend.run(CliFrontend.java:245)
+	at org.apache.flink.client.cli.CliFrontend.parseAndRun(CliFrontend.java:1095)
+	at org.apache.flink.client.cli.CliFrontend.lambda$mainInternal$9(CliFrontend.java:1189)
+	at org.apache.flink.runtime.security.contexts.NoOpSecurityContext.runSecured(NoOpSecurityContext.java:28)
+	at org.apache.flink.client.cli.CliFrontend.mainInternal(CliFrontend.java:1189)
+	at org.apache.flink.client.cli.CliFrontend.main(CliFrontend.java:1157)
+Caused by: java.lang.IllegalArgumentException: duplicate element: is
+	at java.base/java.util.ImmutableCollections$SetN.<init>(ImmutableCollections.java:918)
+	at java.base/java.util.Set.of(Set.java:706)
+	at com.enbd.sentiment.flink.SentimentJob$TFIDFCalculator.initializeStopWords(SentimentJob.java:1125)
+	at com.enbd.sentiment.flink.SentimentJob$TFIDFCalculator.<init>(SentimentJob.java:1067)
+	at com.enbd.sentiment.flink.SentimentJob$MLSentimentAnalyzer.<init>(SentimentJob.java:231)
+	at com.enbd.sentiment.flink.SentimentJob.main(SentimentJob.java:56)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.apache.flink.client.program.PackagedProgram.callMainMethod(PackagedProgram.java:355)
+	... 9 more
