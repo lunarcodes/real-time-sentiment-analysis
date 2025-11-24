@@ -1,0 +1,5 @@
+/Users/ruthvik/sentiment-dashboard/common-models/src/main/java/com/enbd/sentiment/models/AggregatedMetrics.java
+/Users/ruthvik/sentiment-dashboard/common-models/src/main/java/com/enbd/sentiment/models/DashboardMessage.java
+/Users/ruthvik/sentiment-dashboard/common-models/src/main/java/com/enbd/sentiment/models/EnrichedMessage.java
+/Users/ruthvik/sentiment-dashboard/common-models/src/main/java/com/enbd/sentiment/models/RawTweet.java
+/Users/ruthvik/sentiment-dashboard/common-models/src/main/java/com/enbd/sentiment/models/SentimentAnalyzedMessage.java

@@ -1,0 +1,5 @@
+com/enbd/sentiment/flink/AggregationJob.class
+com/enbd/sentiment/flink/SentimentJob.class
+com/enbd/sentiment/flink/EnrichmentJob.class
+com/enbd/sentiment/flink/AggregationJob$SentimentAggregator.class
+com/enbd/sentiment/flink/AggregationJob$MetricsAccumulator.class

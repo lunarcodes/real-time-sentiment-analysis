@@ -1,0 +1,3 @@
+com/enbd/sentiment/producer/TwitterProducer.class
+com/enbd/sentiment/producer/TwitterProducer$MessageTemplate.class
+com/enbd/sentiment/producer/TwitterProducer$Location.class

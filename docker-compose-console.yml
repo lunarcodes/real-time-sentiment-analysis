@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  redpanda-console:
+    image: redpandadata/console:latest
+    container_name: redpanda-console
+    network_mode: host
+    environment:
+      - KAFKA_BROKERS=localhost:9092
+    restart: unless-stopped
