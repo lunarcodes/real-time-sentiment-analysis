@@ -2,6 +2,7 @@ package com.enbd.sentiment.flink;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
@@ -89,7 +90,7 @@ public class SentimentJob {
                 ObjectNode emotions = sentiment.putObject("emotions");
                 Map<String, Double> detectedEmotions = analyzer.detectEmotions(cleanedText);
                 for (Map.Entry<String, Double> entry : detectedEmotions.entrySet()) {
-                    if (entry.getValue() > 0.3) { // Only include significant emotions
+                    if (entry.getValue() > 0.3) {
                         emotions.put(entry.getKey(), entry.getValue());
                     }
                 }
@@ -123,21 +124,21 @@ public class SentimentJob {
                 
                 // Extract keywords using TF-IDF
                 List<String> keywords = analyzer.extractKeywords(cleanedText);
-                com.fasterxml.jackson.databind.node.ArrayNode keywordsArray = contentAnalysis.putArray("keywords");
+                ArrayNode keywordsArray = contentAnalysis.putArray("keywords");
                 for (String keyword : keywords) {
                     keywordsArray.add(keyword);
                 }
                 
                 // Identify products mentioned using NLP
                 List<String> products = analyzer.identifyProducts(cleanedText);
-                com.fasterxml.jackson.databind.node.ArrayNode productsArray = contentAnalysis.putArray("products_mentioned");
+                ArrayNode productsArray = contentAnalysis.putArray("products_mentioned");
                 for (String product : products) {
                     productsArray.add(product);
                 }
                 
                 // Identify issues using classification
                 List<String> issues = analyzer.identifyIssues(cleanedText);
-                com.fasterxml.jackson.databind.node.ArrayNode issuesArray = contentAnalysis.putArray("issues_identified");
+                ArrayNode issuesArray = contentAnalysis.putArray("issues_identified");
                 for (String issue : issues) {
                     issuesArray.add(issue);
                 }
@@ -146,7 +147,7 @@ public class SentimentJob {
                 ObjectNode modelMetadata = analyzed.putObject("model_metadata");
                 modelMetadata.put("model_name", "VADER-NaiveBayes-Hybrid");
                 modelMetadata.put("model_version", "2.0.0");
-                modelMetadata.put("inference_time_ms", System.currentTimeMillis() % 100); // Simulated
+                modelMetadata.put("inference_time_ms", System.currentTimeMillis() % 100);
                 
                 // Timestamps
                 ObjectNode timestamps = analyzed.putObject("timestamps");
@@ -157,7 +158,6 @@ public class SentimentJob {
                 return MAPPER.writeValueAsString(analyzed);
                 
             } catch (Exception e) {
-                // Return minimal valid JSON on error
                 return "{\"error\": \"" + e.getMessage() + "\"}";
             }
         }).filter(msg -> !msg.contains("\"error\""));
@@ -192,31 +192,14 @@ public class SentimentJob {
     public static class MLSentimentAnalyzer implements Serializable {
         private static final long serialVersionUID = 1L;
         
-        // Sentiment Lexicon (AFINN-style with intensity scores from -5 to +5)
         private final Map<String, Double> sentimentLexicon;
-        
-        // Negation words
         private final Set<String> negationWords;
-        
-        // Intensity boosters
         private final Map<String, Double> intensityBoosters;
-        
-        // Intensity dampeners
         private final Map<String, Double> intensityDampeners;
-        
-        // Emotion lexicons
         private final Map<String, Set<String>> emotionLexicons;
-        
-        // Product keywords
         private final Map<String, Set<String>> productKeywords;
-        
-        // Issue keywords
         private final Map<String, Set<String>> issueKeywords;
-        
-        // Naive Bayes model parameters (pre-trained on sentiment data)
         private final NaiveBayesClassifier classifier;
-        
-        // TF-IDF calculator
         private final TFIDFCalculator tfidfCalculator;
         
         public MLSentimentAnalyzer() {
@@ -231,9 +214,6 @@ public class SentimentJob {
             this.tfidfCalculator = new TFIDFCalculator();
         }
         
-        /**
-         * Main sentiment analysis method combining lexicon and ML approaches
-         */
         public SentimentResult analyze(String text) {
             if (text == null || text.trim().isEmpty()) {
                 return new SentimentResult(0.0, "neutral", 0.5, "none");
@@ -242,24 +222,15 @@ public class SentimentJob {
             String normalizedText = text.toLowerCase().trim();
             List<String> tokens = tokenize(normalizedText);
             
-            // 1. VADER-style lexicon-based analysis
             double lexiconScore = calculateLexiconScore(tokens, normalizedText);
-            
-            // 2. Naive Bayes classification
             double[] nbProbabilities = classifier.classify(tokens);
-            double nbScore = nbProbabilities[0] - nbProbabilities[2]; // positive - negative
+            double nbScore = nbProbabilities[0] - nbProbabilities[2];
             
-            // 3. Combine scores (ensemble approach)
             double combinedScore = (lexiconScore * 0.6) + (nbScore * 0.4);
             combinedScore = Math.max(-1.0, Math.min(1.0, combinedScore));
             
-            // 4. Calculate confidence based on agreement between methods
             double confidence = calculateConfidence(lexiconScore, nbScore, tokens.size());
-            
-            // 5. Determine classification
             String classification = classifyScore(combinedScore);
-            
-            // 6. Determine intensity
             String intensity = determineIntensity(Math.abs(combinedScore));
             
             return new SentimentResult(
@@ -267,15 +238,12 @@ public class SentimentJob {
                 classification,
                 confidence,
                 intensity,
-                nbProbabilities[0],  // positive probability
-                nbProbabilities[1],  // neutral probability
-                nbProbabilities[2]   // negative probability
+                nbProbabilities[0],
+                nbProbabilities[1],
+                nbProbabilities[2]
             );
         }
         
-        /**
-         * Calculate lexicon-based sentiment score with negation and intensity handling
-         */
         private double calculateLexiconScore(List<String> tokens, String fullText) {
             double totalScore = 0.0;
             int scoredTokens = 0;
@@ -286,45 +254,35 @@ public class SentimentJob {
             for (int i = 0; i < tokens.size(); i++) {
                 String token = tokens.get(i);
                 
-                // Check for negation
                 if (negationWords.contains(token)) {
                     negationActive = true;
-                    negationScope = 3; // Negation affects next 3 words
+                    negationScope = 3;
                     continue;
                 }
                 
-                // Check for intensity boosters
                 if (intensityBoosters.containsKey(token)) {
                     currentBooster = intensityBoosters.get(token);
                     continue;
                 }
                 
-                // Check for intensity dampeners
                 if (intensityDampeners.containsKey(token)) {
                     currentBooster = intensityDampeners.get(token);
                     continue;
                 }
                 
-                // Get sentiment score from lexicon
                 if (sentimentLexicon.containsKey(token)) {
                     double wordScore = sentimentLexicon.get(token);
                     
-                    // Apply negation
                     if (negationActive && negationScope > 0) {
-                        wordScore *= -0.74; // VADER uses -0.74 for negation
+                        wordScore *= -0.74;
                     }
                     
-                    // Apply intensity modifier
                     wordScore *= currentBooster;
-                    
                     totalScore += wordScore;
                     scoredTokens++;
-                    
-                    // Reset booster after use
                     currentBooster = 1.0;
                 }
                 
-                // Decrease negation scope
                 if (negationScope > 0) {
                     negationScope--;
                     if (negationScope == 0) {
@@ -333,12 +291,9 @@ public class SentimentJob {
                 }
             }
             
-            // Handle special cases
             totalScore += handleSpecialCases(fullText, tokens);
             
-            // Normalize score
             if (scoredTokens > 0) {
-                // Apply compound score normalization (VADER-style)
                 double normalizedScore = totalScore / Math.sqrt((totalScore * totalScore) + 15);
                 return Math.max(-1.0, Math.min(1.0, normalizedScore));
             }
@@ -346,13 +301,9 @@ public class SentimentJob {
             return 0.0;
         }
         
-        /**
-         * Handle special text patterns (ALL CAPS, punctuation emphasis, etc.)
-         */
         private double handleSpecialCases(String text, List<String> tokens) {
             double modifier = 0.0;
             
-            // ALL CAPS detection (shows emphasis/intensity)
             long capsWords = tokens.stream()
                 .filter(t -> t.length() > 1 && t.equals(t.toUpperCase()))
                 .count();
@@ -360,55 +311,35 @@ public class SentimentJob {
                 modifier += 0.1 * Math.min(capsWords, 3);
             }
             
-            // Exclamation marks (shows emphasis)
             long exclamations = text.chars().filter(ch -> ch == '!').count();
             modifier += 0.05 * Math.min(exclamations, 4);
             
-            // Question marks at end (might indicate confusion/complaint)
             if (text.endsWith("?") || text.endsWith("??")) {
                 modifier -= 0.1;
             }
             
-            // Repeated characters (e.g., "soooo good" or "baaaad")
             if (Pattern.compile("(.)\\1{2,}").matcher(text).find()) {
-                modifier += 0.1; // Amplifies existing sentiment
+                modifier += 0.1;
             }
             
             return modifier;
         }
         
-        /**
-         * Calculate confidence based on various factors
-         */
         private double calculateConfidence(double lexiconScore, double nbScore, int tokenCount) {
-            // Base confidence from agreement between methods
             double scoreDiff = Math.abs(lexiconScore - nbScore);
             double agreementConfidence = 1.0 - (scoreDiff / 2.0);
-            
-            // Token count factor (more tokens = more confident)
             double tokenFactor = Math.min(1.0, tokenCount / 10.0);
-            
-            // Score magnitude factor (stronger scores = more confident)
             double magnitudeFactor = Math.abs(lexiconScore);
-            
-            // Combine factors
             double confidence = (agreementConfidence * 0.5) + (tokenFactor * 0.3) + (magnitudeFactor * 0.2);
-            
             return Math.max(0.3, Math.min(0.99, confidence));
         }
         
-        /**
-         * Classify score into sentiment category
-         */
         private String classifyScore(double score) {
             if (score >= 0.05) return "positive";
             if (score <= -0.05) return "negative";
             return "neutral";
         }
         
-        /**
-         * Determine sentiment intensity
-         */
         private String determineIntensity(double absoluteScore) {
             if (absoluteScore >= 0.6) return "strong";
             if (absoluteScore >= 0.3) return "moderate";
@@ -416,9 +347,6 @@ public class SentimentJob {
             return "none";
         }
         
-        /**
-         * Detect emotions in text
-         */
         public Map<String, Double> detectEmotions(String text) {
             Map<String, Double> emotions = new HashMap<>();
             String normalizedText = text.toLowerCase();
@@ -433,7 +361,6 @@ public class SentimentJob {
                     .count();
                 
                 if (matchCount > 0) {
-                    // Calculate emotion intensity based on matches
                     double intensity = Math.min(1.0, matchCount * 0.3 + 0.2);
                     emotions.put(emotion, intensity);
                 }
@@ -442,72 +369,59 @@ public class SentimentJob {
             return emotions;
         }
         
-        /**
-         * Predict churn risk using ML model
-         */
         public double predictChurnRisk(String text, SentimentResult sentiment) {
             double risk = 0.0;
             String normalizedText = text.toLowerCase();
             List<String> tokens = tokenize(normalizedText);
             
-            // Factor 1: Sentiment score (sigmoid transformation)
             double sentimentFactor = 1.0 / (1.0 + Math.exp(sentiment.getScore() * 3));
             risk += sentimentFactor * 0.35;
             
-            // Factor 2: Churn-indicative keywords (learned patterns)
-            Set<String> churnKeywords = Set.of(
+            Set<String> churnKeywords = new HashSet<>(Arrays.asList(
                 "cancel", "canceling", "cancellation", "close", "closing",
                 "switch", "switching", "leave", "leaving", "quit", "quitting",
                 "competitor", "alternative", "better", "elsewhere", "refund",
                 "unsubscribe", "terminate", "discontinue", "end", "stop"
-            );
+            ));
             
             long churnWordCount = tokens.stream()
                 .filter(churnKeywords::contains)
                 .count();
             risk += Math.min(0.4, churnWordCount * 0.15);
             
-            // Factor 3: Complaint intensity
-            Set<String> complaintWords = Set.of(
+            Set<String> complaintWords = new HashSet<>(Arrays.asList(
                 "worst", "terrible", "horrible", "awful", "disgusting",
                 "unacceptable", "ridiculous", "pathetic", "useless", "waste",
                 "scam", "fraud", "steal", "rob", "cheat"
-            );
+            ));
             
             long complaintCount = tokens.stream()
                 .filter(complaintWords::contains)
                 .count();
             risk += Math.min(0.25, complaintCount * 0.1);
             
-            // Factor 4: Emotion signals
             Map<String, Double> emotions = detectEmotions(text);
             if (emotions.containsKey("anger")) risk += emotions.get("anger") * 0.15;
             if (emotions.containsKey("frustration")) risk += emotions.get("frustration") * 0.1;
             if (emotions.containsKey("disappointment")) risk += emotions.get("disappointment") * 0.08;
             
-            // Apply sigmoid to normalize
             return 1.0 / (1.0 + Math.exp(-5 * (risk - 0.3)));
         }
         
-        /**
-         * Predict complaint probability
-         */
         public double predictComplaintProbability(String text, SentimentResult sentiment) {
             double prob = 0.0;
             String normalizedText = text.toLowerCase();
             
-            // Factor 1: Negative sentiment
             if (sentiment.getClassification().equals("negative")) {
                 prob += 0.3 + (Math.abs(sentiment.getScore()) * 0.2);
             }
             
-            // Factor 2: Complaint keywords
-            Set<String> complaintIndicators = Set.of(
+            Set<String> complaintIndicators = new HashSet<>(Arrays.asList(
                 "complaint", "complain", "complaining", "report", "reporting",
                 "issue", "problem", "bug", "error", "fail", "failed", "failing",
                 "broken", "not working", "doesn't work", "won't work",
                 "unacceptable", "disappointed", "dissatisfied", "unhappy"
-            );
+            ));
             
             for (String indicator : complaintIndicators) {
                 if (normalizedText.contains(indicator)) {
@@ -515,7 +429,6 @@ public class SentimentJob {
                 }
             }
             
-            // Factor 3: Question/demand patterns
             if (normalizedText.contains("why") && normalizedText.contains("?")) prob += 0.1;
             if (normalizedText.contains("how") && normalizedText.contains("?")) prob += 0.05;
             if (normalizedText.contains("fix") || normalizedText.contains("solve")) prob += 0.1;
@@ -523,9 +436,6 @@ public class SentimentJob {
             return Math.min(1.0, prob);
         }
         
-        /**
-         * Extract keywords using TF-IDF
-         */
         public List<String> extractKeywords(String text) {
             List<String> tokens = tokenize(text.toLowerCase());
             Map<String, Double> tfidfScores = tfidfCalculator.calculateTFIDF(tokens);
@@ -537,9 +447,6 @@ public class SentimentJob {
                 .collect(Collectors.toList());
         }
         
-        /**
-         * Identify products mentioned in text
-         */
         public List<String> identifyProducts(String text) {
             List<String> products = new ArrayList<>();
             String normalizedText = text.toLowerCase();
@@ -556,9 +463,6 @@ public class SentimentJob {
             return products;
         }
         
-        /**
-         * Identify issues in text
-         */
         public List<String> identifyIssues(String text) {
             List<String> issues = new ArrayList<>();
             String normalizedText = text.toLowerCase();
@@ -575,9 +479,6 @@ public class SentimentJob {
             return issues;
         }
         
-        /**
-         * Tokenize text into words
-         */
         private List<String> tokenize(String text) {
             return Arrays.stream(text.split("\\s+"))
                 .map(t -> t.replaceAll("[^a-zA-Z0-9]", "").toLowerCase())
@@ -590,7 +491,7 @@ public class SentimentJob {
         private Map<String, Double> initializeSentimentLexicon() {
             Map<String, Double> lexicon = new HashMap<>();
             
-            // Positive words (scores from 0.1 to 1.0)
+            // Positive words
             lexicon.put("love", 0.9);
             lexicon.put("loved", 0.9);
             lexicon.put("loving", 0.85);
@@ -639,7 +540,7 @@ public class SentimentJob {
             lexicon.put("appreciated", 0.6);
             lexicon.put("grateful", 0.65);
             
-            // Negative words (scores from -0.1 to -1.0)
+            // Negative words
             lexicon.put("hate", -0.9);
             lexicon.put("hated", -0.9);
             lexicon.put("hating", -0.85);
@@ -708,16 +609,14 @@ public class SentimentJob {
         }
         
         private Set<String> initializeNegationWords() {
-            return Set.of(
+            return new HashSet<>(Arrays.asList(
                 "not", "no", "never", "neither", "nobody", "nothing",
-                "nowhere", "none", "dont", "doesn't", "didnt", "didn't",
-                "wont", "won't", "wouldnt", "wouldn't", "couldnt", "couldn't",
-                "shouldnt", "shouldn't", "cant", "can't", "cannot", "isnt",
-                "isn't", "arent", "aren't", "wasnt", "wasn't", "werent",
-                "weren't", "hasnt", "hasn't", "havent", "haven't", "hadnt",
-                "hadn't", "without", "lack", "lacking", "hardly", "barely",
+                "nowhere", "none", "dont", "doesnt", "didnt",
+                "wont", "wouldnt", "couldnt", "shouldnt", "cant", "cannot",
+                "isnt", "arent", "wasnt", "werent", "hasnt", "havent", "hadnt",
+                "without", "lack", "lacking", "hardly", "barely",
                 "scarcely", "seldom", "rarely"
-            );
+            ));
         }
         
         private Map<String, Double> initializeIntensityBoosters() {
@@ -745,9 +644,6 @@ public class SentimentJob {
             Map<String, Double> dampeners = new HashMap<>();
             dampeners.put("somewhat", 0.7);
             dampeners.put("slightly", 0.6);
-            dampeners.put("a bit", 0.65);
-            dampeners.put("kind of", 0.7);
-            dampeners.put("sort of", 0.7);
             dampeners.put("rather", 0.75);
             dampeners.put("fairly", 0.8);
             dampeners.put("quite", 0.85);
@@ -761,53 +657,52 @@ public class SentimentJob {
         private Map<String, Set<String>> initializeEmotionLexicons() {
             Map<String, Set<String>> emotions = new HashMap<>();
             
-            emotions.put("joy", Set.of(
+            emotions.put("joy", new HashSet<>(Arrays.asList(
                 "happy", "joy", "joyful", "delighted", "pleased", "glad",
                 "cheerful", "elated", "thrilled", "excited", "ecstatic",
                 "wonderful", "fantastic", "amazing", "love", "loving"
-            ));
+            )));
             
-            emotions.put("anger", Set.of(
+            emotions.put("anger", new HashSet<>(Arrays.asList(
                 "angry", "anger", "furious", "outraged", "enraged", "livid",
                 "mad", "irate", "annoyed", "irritated", "frustrated",
                 "hate", "hating", "hateful", "disgusted", "bitter"
-            ));
+            )));
             
-            emotions.put("sadness", Set.of(
+            emotions.put("sadness", new HashSet<>(Arrays.asList(
                 "sad", "sadness", "unhappy", "depressed", "miserable",
                 "heartbroken", "devastated", "grief", "sorrow", "melancholy",
                 "disappointed", "upset", "down", "low", "gloomy"
-            ));
+            )));
             
-            emotions.put("fear", Set.of(
+            emotions.put("fear", new HashSet<>(Arrays.asList(
                 "afraid", "fear", "scared", "terrified", "frightened",
                 "anxious", "worried", "nervous", "panicked", "alarmed",
                 "concerned", "uneasy", "apprehensive", "dread", "horror"
-            ));
+            )));
             
-            emotions.put("surprise", Set.of(
+            emotions.put("surprise", new HashSet<>(Arrays.asList(
                 "surprised", "surprise", "amazed", "astonished", "shocked",
                 "stunned", "startled", "unexpected", "unbelievable",
                 "incredible", "wow", "omg", "whoa"
-            ));
+            )));
             
-            emotions.put("frustration", Set.of(
+            emotions.put("frustration", new HashSet<>(Arrays.asList(
                 "frustrated", "frustrating", "frustration", "annoyed",
-                "irritated", "exasperated", "fed up", "tired of",
-                "sick of", "enough", "unbearable", "intolerable"
-            ));
+                "irritated", "exasperated", "unbearable", "intolerable"
+            )));
             
-            emotions.put("satisfaction", Set.of(
+            emotions.put("satisfaction", new HashSet<>(Arrays.asList(
                 "satisfied", "satisfaction", "content", "pleased",
-                "fulfilled", "gratified", "happy", "comfortable",
+                "fulfilled", "gratified", "comfortable",
                 "relieved", "accomplished", "successful"
-            ));
+            )));
             
-            emotions.put("disappointment", Set.of(
+            emotions.put("disappointment", new HashSet<>(Arrays.asList(
                 "disappointed", "disappointing", "disappointment",
                 "letdown", "dissatisfied", "unsatisfied",
                 "underwhelmed", "dismayed", "disheartened"
-            ));
+            )));
             
             return emotions;
         }
@@ -815,52 +710,52 @@ public class SentimentJob {
         private Map<String, Set<String>> initializeProductKeywords() {
             Map<String, Set<String>> products = new HashMap<>();
             
-            products.put("mobile_app", Set.of(
+            products.put("mobile_app", new HashSet<>(Arrays.asList(
                 "app", "mobile", "phone", "android", "ios", "iphone",
                 "smartphone", "application", "mobile app", "mobile banking"
-            ));
+            )));
             
-            products.put("website", Set.of(
+            products.put("website", new HashSet<>(Arrays.asList(
                 "website", "site", "web", "online", "portal", "webpage",
                 "browser", "internet banking", "online banking"
-            ));
+            )));
             
-            products.put("credit_card", Set.of(
+            products.put("credit_card", new HashSet<>(Arrays.asList(
                 "credit card", "card", "visa", "mastercard", "amex",
                 "credit", "rewards", "cashback", "platinum", "gold card"
-            ));
+            )));
             
-            products.put("debit_card", Set.of(
+            products.put("debit_card", new HashSet<>(Arrays.asList(
                 "debit card", "debit", "atm", "atm card"
-            ));
+            )));
             
-            products.put("savings_account", Set.of(
+            products.put("savings_account", new HashSet<>(Arrays.asList(
                 "savings", "savings account", "interest", "deposit"
-            ));
+            )));
             
-            products.put("checking_account", Set.of(
+            products.put("checking_account", new HashSet<>(Arrays.asList(
                 "checking", "checking account", "current account"
-            ));
+            )));
             
-            products.put("loan", Set.of(
+            products.put("loan", new HashSet<>(Arrays.asList(
                 "loan", "loans", "personal loan", "auto loan", "car loan",
                 "lending", "borrow", "borrowing", "finance", "financing"
-            ));
+            )));
             
-            products.put("mortgage", Set.of(
+            products.put("mortgage", new HashSet<>(Arrays.asList(
                 "mortgage", "home loan", "housing loan", "property loan",
                 "refinance", "refinancing"
-            ));
+            )));
             
-            products.put("investment", Set.of(
+            products.put("investment", new HashSet<>(Arrays.asList(
                 "investment", "invest", "investing", "stocks", "bonds",
                 "mutual funds", "portfolio", "trading", "wealth"
-            ));
+            )));
             
-            products.put("customer_service", Set.of(
+            products.put("customer_service", new HashSet<>(Arrays.asList(
                 "customer service", "support", "help desk", "call center",
                 "representative", "agent", "service"
-            ));
+            )));
             
             return products;
         }
@@ -868,46 +763,46 @@ public class SentimentJob {
         private Map<String, Set<String>> initializeIssueKeywords() {
             Map<String, Set<String>> issues = new HashMap<>();
             
-            issues.put("app_crash", Set.of(
+            issues.put("app_crash", new HashSet<>(Arrays.asList(
                 "crash", "crashed", "crashing", "freezes", "frozen",
                 "not responding", "force close", "closes", "stops working"
-            ));
+            )));
             
-            issues.put("login_issue", Set.of(
+            issues.put("login_issue", new HashSet<>(Arrays.asList(
                 "login", "log in", "signin", "sign in", "password",
                 "cant login", "cannot login", "locked out", "access denied",
                 "authentication", "otp", "verification"
-            ));
+            )));
             
-            issues.put("transaction_failure", Set.of(
+            issues.put("transaction_failure", new HashSet<>(Arrays.asList(
                 "transaction failed", "payment failed", "transfer failed",
                 "declined", "rejected", "unsuccessful", "not processed"
-            ));
+            )));
             
-            issues.put("slow_performance", Set.of(
+            issues.put("slow_performance", new HashSet<>(Arrays.asList(
                 "slow", "takes forever", "loading", "lag", "lagging",
                 "unresponsive", "delay", "delayed", "waiting"
-            ));
+            )));
             
-            issues.put("billing_issue", Set.of(
+            issues.put("billing_issue", new HashSet<>(Arrays.asList(
                 "billing", "charge", "charged", "fee", "fees",
                 "overcharged", "wrong amount", "incorrect", "statement"
-            ));
+            )));
             
-            issues.put("security_concern", Set.of(
+            issues.put("security_concern", new HashSet<>(Arrays.asList(
                 "security", "fraud", "scam", "hack", "hacked",
                 "unauthorized", "suspicious", "phishing", "stolen"
-            ));
+            )));
             
-            issues.put("poor_service", Set.of(
+            issues.put("poor_service", new HashSet<>(Arrays.asList(
                 "rude", "unhelpful", "unprofessional", "ignored",
-                "no response", "waiting", "long wait", "hold"
-            ));
+                "no response", "long wait", "hold"
+            )));
             
-            issues.put("technical_error", Set.of(
+            issues.put("technical_error", new HashSet<>(Arrays.asList(
                 "error", "bug", "glitch", "not working", "broken",
                 "technical", "system error", "server"
-            ));
+            )));
             
             return issues;
         }
@@ -919,33 +814,22 @@ public class SentimentJob {
     public static class NaiveBayesClassifier implements Serializable {
         private static final long serialVersionUID = 1L;
         
-        // Pre-computed log probabilities (trained on sentiment dataset)
         private final Map<String, double[]> wordLogProbs;
         private final double[] classLogPriors;
         
-        // Class indices: 0=positive, 1=neutral, 2=negative
-        private static final int POSITIVE = 0;
-        private static final int NEUTRAL = 1;
-        private static final int NEGATIVE = 2;
-        
         public NaiveBayesClassifier() {
             this.wordLogProbs = initializeWordProbabilities();
-            // Prior probabilities (slightly favor neutral as base rate)
             this.classLogPriors = new double[] {
-                Math.log(0.30),  // positive
-                Math.log(0.40),  // neutral
-                Math.log(0.30)   // negative
+                Math.log(0.30),
+                Math.log(0.40),
+                Math.log(0.30)
             };
         }
         
-        /**
-         * Classify text and return probability distribution [positive, neutral, negative]
-         */
         public double[] classify(List<String> tokens) {
             double[] logProbs = new double[3];
             System.arraycopy(classLogPriors, 0, logProbs, 0, 3);
             
-            // Add log probabilities for each word
             for (String token : tokens) {
                 if (wordLogProbs.containsKey(token)) {
                     double[] wordProbs = wordLogProbs.get(token);
@@ -955,13 +839,9 @@ public class SentimentJob {
                 }
             }
             
-            // Convert log probabilities to probabilities using softmax
             return softmax(logProbs);
         }
         
-        /**
-         * Softmax function to convert log probabilities to probabilities
-         */
         private double[] softmax(double[] logProbs) {
             double maxLogProb = Arrays.stream(logProbs).max().orElse(0);
             
@@ -980,15 +860,8 @@ public class SentimentJob {
             return probs;
         }
         
-        /**
-         * Initialize word probabilities (simulating trained model)
-         * In production, these would be loaded from a trained model file
-         */
         private Map<String, double[]> initializeWordProbabilities() {
             Map<String, double[]> probs = new HashMap<>();
-            
-            // Format: {positive_log_prob, neutral_log_prob, negative_log_prob}
-            // Higher (less negative) values indicate stronger association
             
             // Positive words
             probs.put("love", new double[] {-1.2, -3.0, -4.5});
@@ -1035,13 +908,9 @@ public class SentimentJob {
             probs.put("scam", new double[] {-4.5, -3.5, -1.2});
             probs.put("fraud", new double[] {-4.5, -3.5, -1.2});
             
-            // Neutral/common words
+            // Neutral words
             probs.put("the", new double[] {-2.3, -2.3, -2.3});
             probs.put("and", new double[] {-2.3, -2.3, -2.3});
-            probs.put("is", new double[] {-2.3, -2.3, -2.3});
-            probs.put("it", new double[] {-2.3, -2.3, -2.3});
-            probs.put("this", new double[] {-2.3, -2.3, -2.3});
-            probs.put("that", new double[] {-2.3, -2.3, -2.3});
             probs.put("app", new double[] {-2.4, -2.2, -2.4});
             probs.put("service", new double[] {-2.3, -2.2, -2.3});
             probs.put("account", new double[] {-2.3, -2.2, -2.3});
@@ -1058,7 +927,6 @@ public class SentimentJob {
     public static class TFIDFCalculator implements Serializable {
         private static final long serialVersionUID = 1L;
         
-        // Simulated IDF values (in production, computed from corpus)
         private final Map<String, Double> idfValues;
         private final Set<String> stopWords;
         
@@ -1067,13 +935,9 @@ public class SentimentJob {
             this.stopWords = initializeStopWords();
         }
         
-        /**
-         * Calculate TF-IDF scores for tokens
-         */
         public Map<String, Double> calculateTFIDF(List<String> tokens) {
             Map<String, Double> tfidfScores = new HashMap<>();
             
-            // Calculate term frequencies
             Map<String, Long> termFrequencies = tokens.stream()
                 .filter(t -> !stopWords.contains(t))
                 .collect(Collectors.groupingBy(t -> t, Collectors.counting()));
@@ -1081,11 +945,10 @@ public class SentimentJob {
             int totalTerms = termFrequencies.values().stream()
                 .mapToInt(Long::intValue).sum();
             
-            // Calculate TF-IDF
             for (Map.Entry<String, Long> entry : termFrequencies.entrySet()) {
                 String term = entry.getKey();
-                double tf = entry.getValue().doubleValue() / totalTerms;
-                double idf = idfValues.getOrDefault(term, 3.0); // Default IDF for unknown words
+                double tf = entry.getValue().doubleValue() / Math.max(1, totalTerms);
+                double idf = idfValues.getOrDefault(term, 3.0);
                 tfidfScores.put(term, tf * idf);
             }
             
@@ -1095,7 +958,6 @@ public class SentimentJob {
         private Map<String, Double> initializeIDFValues() {
             Map<String, Double> idf = new HashMap<>();
             
-            // Common words have lower IDF (appear in many documents)
             idf.put("app", 1.5);
             idf.put("service", 1.5);
             idf.put("bank", 1.4);
@@ -1103,8 +965,6 @@ public class SentimentJob {
             idf.put("customer", 1.6);
             idf.put("good", 1.8);
             idf.put("bad", 2.0);
-            
-            // More specific words have higher IDF
             idf.put("crash", 3.5);
             idf.put("excellent", 3.2);
             idf.put("terrible", 3.5);
@@ -1122,7 +982,8 @@ public class SentimentJob {
         }
         
         private Set<String> initializeStopWords() {
-            return Set.of(
+            // Using HashSet with Arrays.asList to avoid Set.of() duplicate detection issues
+            return new HashSet<>(Arrays.asList(
                 "a", "an", "the", "and", "or", "but", "in", "on", "at", "to",
                 "for", "of", "with", "by", "from", "as", "is", "was", "are",
                 "were", "been", "be", "have", "has", "had", "do", "does", "did",
@@ -1132,18 +993,15 @@ public class SentimentJob {
                 "yours", "yourself", "yourselves", "he", "him", "his", "himself",
                 "she", "her", "hers", "herself", "it", "its", "itself", "they",
                 "them", "their", "theirs", "themselves", "what", "which", "who",
-                "whom", "this", "that", "these", "those", "am", "is", "are",
-                "was", "were", "be", "been", "being", "have", "has", "had",
-                "having", "do", "does", "did", "doing", "a", "an", "the", "and",
-                "but", "if", "or", "because", "as", "until", "while", "of",
-                "at", "by", "for", "with", "about", "against", "between", "into",
-                "through", "during", "before", "after", "above", "below", "to",
-                "from", "up", "down", "in", "out", "on", "off", "over", "under",
-                "again", "further", "then", "once", "here", "there", "when",
-                "where", "why", "how", "all", "each", "few", "more", "most",
-                "other", "some", "such", "no", "nor", "not", "only", "own",
-                "same", "so", "than", "too", "very", "just", "also"
-            );
+                "whom", "this", "that", "these", "those", "am", "being", "having",
+                "doing", "if", "because", "until", "while", "about", "against",
+                "between", "into", "through", "during", "before", "after", "above",
+                "below", "up", "down", "out", "off", "over", "under", "again",
+                "further", "then", "once", "here", "there", "when", "where",
+                "why", "how", "all", "each", "few", "more", "most", "other",
+                "some", "such", "no", "nor", "not", "only", "own", "same",
+                "so", "than", "too", "very", "just", "also"
+            ));
         }
     }
     
