@@ -35,6 +35,7 @@ if [ -f "$PROJECT_DIR/logs/producer.pid" ]; then
     PID=$(cat $PROJECT_DIR/logs/producer.pid)
     kill $PID 2>/dev/null && echo -e "${GREEN}✓${NC} Stopped Kafka Producer (PID: $PID)"
     rm $PROJECT_DIR/logs/producer.pid
+    pkill -f twitter-producer.jar
 fi
 
 # Stop Flink
@@ -50,11 +51,15 @@ fi
 # Stop Redis
 echo -e "${YELLOW}Stopping Redis...${NC}"
 brew services stop redis
+#brew services stop kafka && rm -rf /opt/homebrew/var/lib/kraft-combined-logs
+
 echo -e "${GREEN}✓${NC} Stopped Redis"
 
 # Stop Kafka (KRaft mode - no Zookeeper to stop)
 echo -e "${YELLOW}Stopping Kafka...${NC}"
-brew services stop kafka
+#brew services stop kafka
+brew services stop kafka && rm -rf /opt/homebrew/var/lib/kraft-combined-logs
+
 echo -e "${GREEN}✓${NC} Stopped Kafka"
 
 echo ""
