@@ -155,6 +155,16 @@ public class SentimentJob {
                 timestamps.put("enriched_at", enriched.get("timestamps").get("enriched_at").asText());
                 timestamps.put("analyzed_at", Instant.now().toString());
                 
+                // Pass through location data for dashboard geo-tracking
+                if (enriched.has("location") && enriched.get("location") != null) {
+                    analyzed.set("location", enriched.get("location"));
+                }
+                
+                // Pass through source data for channel tracking
+                if (enriched.has("source") && enriched.get("source") != null) {
+                    analyzed.set("source", enriched.get("source"));
+                }
+                
                 return MAPPER.writeValueAsString(analyzed);
                 
             } catch (Exception e) {

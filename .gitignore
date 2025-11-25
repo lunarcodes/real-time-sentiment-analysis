@@ -3,3 +3,5 @@ react-dashboard2/node_modules
 *.jar
 common-models/target/common-models-1.0.0.jar
 *.jar
+*.swp
+*.class

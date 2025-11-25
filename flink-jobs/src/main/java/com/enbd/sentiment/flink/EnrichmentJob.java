@@ -103,7 +103,7 @@ public class EnrichmentJob {
                 
                 ObjectNode parsed = location.putObject("parsed");
                 
-                // Simple location parsing
+                // Parse all locations from TwitterProducer
                 if (locationStr.contains("Dubai")) {
                     parsed.put("city", "Dubai");
                     parsed.put("country", "United Arab Emirates");
@@ -111,6 +111,20 @@ public class EnrichmentJob {
                     ObjectNode coords = parsed.putObject("coordinates");
                     coords.put("latitude", 25.2048);
                     coords.put("longitude", 55.2708);
+                } else if (locationStr.contains("Abu Dhabi")) {
+                    parsed.put("city", "Abu Dhabi");
+                    parsed.put("country", "United Arab Emirates");
+                    parsed.put("country_code", "AE");
+                    ObjectNode coords = parsed.putObject("coordinates");
+                    coords.put("latitude", 24.4539);
+                    coords.put("longitude", 54.3773);
+                } else if (locationStr.contains("Sharjah")) {
+                    parsed.put("city", "Sharjah");
+                    parsed.put("country", "United Arab Emirates");
+                    parsed.put("country_code", "AE");
+                    ObjectNode coords = parsed.putObject("coordinates");
+                    coords.put("latitude", 25.3463);
+                    coords.put("longitude", 55.4209);
                 } else if (locationStr.contains("London")) {
                     parsed.put("city", "London");
                     parsed.put("country", "United Kingdom");
@@ -125,6 +139,41 @@ public class EnrichmentJob {
                     ObjectNode coords = parsed.putObject("coordinates");
                     coords.put("latitude", 40.7128);
                     coords.put("longitude", -74.0060);
+                } else if (locationStr.contains("Singapore")) {
+                    parsed.put("city", "Singapore");
+                    parsed.put("country", "Singapore");
+                    parsed.put("country_code", "SG");
+                    ObjectNode coords = parsed.putObject("coordinates");
+                    coords.put("latitude", 1.3521);
+                    coords.put("longitude", 103.8198);
+                } else if (locationStr.contains("Mumbai")) {
+                    parsed.put("city", "Mumbai");
+                    parsed.put("country", "India");
+                    parsed.put("country_code", "IN");
+                    ObjectNode coords = parsed.putObject("coordinates");
+                    coords.put("latitude", 19.0760);
+                    coords.put("longitude", 72.8777);
+                } else if (locationStr.contains("Tokyo")) {
+                    parsed.put("city", "Tokyo");
+                    parsed.put("country", "Japan");
+                    parsed.put("country_code", "JP");
+                    ObjectNode coords = parsed.putObject("coordinates");
+                    coords.put("latitude", 35.6762);
+                    coords.put("longitude", 139.6503);
+                } else if (locationStr.contains("Paris")) {
+                    parsed.put("city", "Paris");
+                    parsed.put("country", "France");
+                    parsed.put("country_code", "FR");
+                    ObjectNode coords = parsed.putObject("coordinates");
+                    coords.put("latitude", 48.8566);
+                    coords.put("longitude", 2.3522);
+                } else if (locationStr.contains("Sydney")) {
+                    parsed.put("city", "Sydney");
+                    parsed.put("country", "Australia");
+                    parsed.put("country_code", "AU");
+                    ObjectNode coords = parsed.putObject("coordinates");
+                    coords.put("latitude", -33.8688);
+                    coords.put("longitude", 151.2093);
                 } else {
                     parsed.put("city", "Unknown");
                     parsed.put("country", "Unknown");

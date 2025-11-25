@@ -44,6 +44,58 @@ public class SentimentAnalyzedMessage {
     
     private Timestamps timestamps;
     
+    // Pass-through fields from EnrichedMessage for dashboard location tracking
+    private Location location;
+    private Source source;
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Source {
+        private String platform;
+        
+        @JsonProperty("post_id")
+        private String postId;
+        
+        private String channel;
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Location {
+        private String raw;
+        private ParsedLocation parsed;
+        
+        @Data
+        @Builder
+        @NoArgsConstructor
+        @AllArgsConstructor
+        public static class ParsedLocation {
+            private String city;
+            private String region;
+            private String country;
+            
+            @JsonProperty("country_code")
+            private String countryCode;
+            
+            private Coordinates coordinates;
+            private String timezone;
+            private double confidence;
+            
+            @Data
+            @Builder
+            @NoArgsConstructor
+            @AllArgsConstructor
+            public static class Coordinates {
+                private double latitude;
+                private double longitude;
+            }
+        }
+    }
+    
     @Data
     @Builder
     @NoArgsConstructor
